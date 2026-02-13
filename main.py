@@ -1,6 +1,6 @@
 '''
 Notes:
-Please run 'pip install pyautogui keyboard mss Pillow anthropic pyttsx3' in your terminal before using the software to ensure function.
+Please run 'pip install pyautogui keyboard mss Pillow pyttsx3 anthropic' in your terminal before using the software to ensure function.
 If needed, please give the program permission to screen record. It is necessary for software function.
 '''
 
@@ -85,8 +85,8 @@ def query_agent():
         llm_message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
-            system="You are an AI agent for a blind user that can take action on the user's screen. YOU MUST REPLY ONLY WITH A SERIES OF COMMANDS, all in one line and each started with TWO exclamation points (!!) and terminated with TWO semicolons each (;;), to take action. You are provided an image of the user's screen with a precise grid with 25px subdivisions. Commands, in format !!COMMAND(PARAM1, PARAM2);;, include !!CLICK(COORDX, COORDY);;, !!WRITE(`STRING`);;, !!PRESS(`KEY`);;, !!SCROLLUP();;, !!SCROLLDOWN();;, !!PAUSE(SECONDS);;, !!MESSAGE(`TEXT`);;, !!REVIEW();;, !!END();;. CLICK and WRITE allow you to control the user's screen. PRESS lets you press and release a key or shortcut, with keys separated with a + (use shortcuts over clicks when possible). PAUSE lets you delay actions (short delays between actions recommended). MESSAGE lets you tell the user something or give them feedback during your process. REVIEW is to be used for complex tasks where changes on the screen as expected, as it reprompts you with the user's updated screen after prior actions before terminating the current string of commands. END marks the end of your task and terminates the string of commands, and is recommended for one-step tasks. Anything you send outside of commands will NOT be read to the user. Make sure to have any text you would like the user to see in the MESSAGE command. ONCE AGAIN, text outside of commands will result in the your FAILURE as an agent. Notes: If navigating to a website or new page, be sure to REVIEW and PAUSE signfiicantly before continuing to allow for loading times. And, if searching for something, use browser and built-in shortcuts rather than clicking on any searchbar. If you cannot see your target clearly or it is near the very top/bottom of the screen, SCROLLUP AND SCROLL DOWN are small bursts of scrolling, equivalent to `page up` and `page down`.",
-            messages=[
+            system="You are an AI agent for a blind user that can take action on the user's screen. YOU MUST REPLY ONLY WITH A SERIES OF COMMANDS, all in one line and each started with TWO exclamation points (!!) and terminated with TWO semicolons each (;;), to take action. You are provided an image of the user's screen with a precise grid with 25px subdivisions. Screen dimensions are " + str(screen_width) + "x" + str(screen_height) + ". Commands, in format !!COMMAND(PARAM1, PARAM2);;, include !!CLICK(COORDX, COORDY);;, !!WRITE(`STRING`);;, !!PRESS(`KEY`);;, !!SCROLLUP();;, !!SCROLLDOWN();;, !!PAUSE(SECONDS);;, !!MESSAGE(`TEXT`);;, !!REVIEW();;, !!END();;. CLICK and WRITE allow you to control the user's screen. PRESS lets you press and release a key or shortcut, with keys separated with a + (use shortcuts over clicks when possible). PAUSE lets you delay actions (short delays between actions recommended). MESSAGE lets you tell the user something or give them feedback during your process. REVIEW is to be used for complex tasks where changes on the screen as expected, as it reprompts you with the user's updated screen after prior actions before terminating the current string of commands. END marks the end of your task and terminates the string of commands, and is recommended for one-step tasks. Anything you send outside of commands will NOT be read to the user. Make sure to have any text you would like the user to see in the MESSAGE command. ONCE AGAIN, text outside of commands will result in the your FAILURE as an agent. Notes: ALWAYS !!PRESS(`win+s`);; or !!PRESS(`cmd+space`);; to search for and open applications on different OSs, instead than clicking on tiny icons (which you WILL miss). If navigating to a website or new page, be sure to REVIEW and PAUSE signfiicantly before continuing to allow for loading times. And, if searching for something, use browser and built-in shortcuts rather than clicking on any searchbar. If you cannot see your target clearly or it is near the very top/bottom of the screen, SCROLLUP AND SCROLL DOWN are small bursts of scrolling, equivalent to `page up` and `page down`. If you are trying to click a button and it didn't work the first time, use !!PRESS(`tab`);; to cycle through elements on screen and press enter. Even if the user has not reprompted you, and the last message was from the assistant, keep providing commands. You will not be prompted if there was nothing to do, and END terminates your cycles. Make sure to click the middle of buttons, not the top left corner. If the screen isn't changing when you click a button, try offsetting your click by a good bit (often to the down and right), as you may be missing slightly.",
+            messages= past_messages + [
                 {
                     "role": "user",
                     "content": [
@@ -104,12 +104,13 @@ def query_agent():
                         }
                     ],
                 }
-            ] # + (past_messages),
+            ],
         )
 
         # if not llm_message or not llm_message.content or len(llm_message.content) == 0: continue
         print(llm_message.content[0].text)
         past_messages.append({"role": "assistant", "content": [{"type": "text", "text": llm_message.content[0].text}]})
+        past_messages.append({"role": "user", "content": [{"type": "text", "text": "Continue the task provided given your previous progress."}]})
         commands = llm_message.content[0].text.split(";;")[:-1]
         commands = [command.strip() for command in commands]
         commands[0] = commands[0][commands[0].index("!!"):]
@@ -120,7 +121,7 @@ def query_agent():
             if command.startswith("!!CLICK"):
                 coords = command[(command.index('(') + 1):command.index(')')].split(',')
                 coords = [int(coord) for coord in coords]
-                pyautogui.click(coords[0]+15, coords[1]+15)
+                pyautogui.click(coords[0]+50, coords[1]+50)
             elif command.startswith("!!WRITE"):
                 text = command[(command.index('(`') + 2):command.index('`)')]
                 keyboard.write(text)
@@ -146,7 +147,7 @@ def query_agent():
                 break
         
         command_cycles += 1
-        if not review: 
+        if not review:
             break
 
     root.deiconify()
