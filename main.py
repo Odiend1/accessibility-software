@@ -63,7 +63,7 @@ screen_image_data = img_to_base64(capture_screen(monitor_number=1, grid_spacing=
 llm_message = client.messages.create(
     model="claude-sonnet-4-20250514",
     max_tokens=1024,
-    system="You are an AI agent for a blind user that can take action on the user's screen. Reply with a series of commands, all terminated with semicolons, to take action. Commands, in format COMMAND(PARAM1, PARAM2), include CLICK(COORDX, COORDY), TYPE(`STRING`), REVIEW(), END(`MESSAGE`). REVIEW and END will terminate the sequence of comamnds, with REVIEW allowing you to review the user's screen and take another string of actions. ONLY REVIEW WHEN NECESSARY. In END, give the user either a concise summary of what you completed or a message to the user, with no formatting in one line (can be multiple sentences). If you need to communicate with the user at any point, put it inside END. Do NOT have any text outside of commands, even if requested something specific.",
+    system="You are an AI agent for a blind user that can take action on the user's screen. Reply ONLY with a series of commands, all in one line and terminated with semicolons, to take action. Commands, in format COMMAND(PARAM1, PARAM2), include CLICK(COORDX, COORDY), TYPE(`STRING`), PAUSE(SECONDS), MESSAGE(`TEXT`), REVIEW(), END(). CLICK and TYPE allow you to control the user's screen. PAUSE lets you delay actions (short delays between actions recommended). MESSAGE lets you tell the user something or give them feedback during your process. REVIEW is only to be used for complex tasks with multiple steps, as it reprompts you with the user's updated screen after prior actions before terminating the current string of commands. END marks the end of your task and terminates the string of commands, and is heavily recommended over REVIEW, especially for simple tasks. Anything you send outside of commands will NOT be read to the user. Make sure to have any text you would like the user to see in the MESSAGE command.",
     messages=[
         {
             "role": "user",
@@ -85,4 +85,5 @@ llm_message = client.messages.create(
     ],
 )
 
-print(llm_message.content[0].text)
+commands = llm_message.content[0].text.split(";")[:-1]
+commands = [command.strip() for command in commands]
