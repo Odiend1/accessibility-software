@@ -1,5 +1,6 @@
 '''
 main.py (Python)
+https://github.com/Odiend1/accessibility-software/
 The Accessibility Assistant software allows blind people to give our AI assistant a prompt and have the AI act directly on the user's computer. The person who is blind could type onto the auto-focused textbox using touch typing, their device's built-in dictation (speech-to-text), or a braille keyboard, among other solutions. The software can use TTS to communicate directly with the user, so it is recommended, but not required, to raise your volume. Closing the application will halt AI action.
 Notes:
 Please run 'pip install pyautogui keyboard mss Pillow pyttsx3 anthropic' in your terminal before using the software to ensure function.
