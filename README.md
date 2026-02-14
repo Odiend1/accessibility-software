@@ -11,3 +11,8 @@ Then, the software can be run with:
 ```
 python main.py
 ```
+
+main.py does not contain an Anthropic API key. Either use the one provided on line 25 of the PDF submitted to the regional conference or generate your own, then add it to line 25:
+```
+api_key="API-KEY"
+```
