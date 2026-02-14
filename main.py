@@ -1,60 +1,74 @@
 '''
+main.py (Python)
+The Accessibility Assistant software allows blind people to give our AI assistant a prompt and have the AI act directly on the user's computer. The person who is blind could type onto the auto-focused textbox using touch typing, their device's built-in dictation (speech-to-text), or a braille keyboard, among other solutions. The software can use TTS to communicate directly with the user, so it is recommended, but not required, to raise your volume. Closing the application will halt AI action.
 Notes:
 Please run 'pip install pyautogui keyboard mss Pillow pyttsx3 anthropic' in your terminal before using the software to ensure function.
-If needed, please give the program permission to screen record. It is necessary for software function.
+If needed, please give the program any requested permissions (including screen recording, accessibility, etc.). It is necessary for software function.
 '''
 
 import pyautogui # Mouse control library
 import keyboard # Keyboard control library
 import mss # Screenshot library
 import mss.tools
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont # Annotates captured screenshot for LLM
 import time
-import base64
-from io import BytesIO
-import anthropic
-import tkinter as tk
-import platform
-import pyttsx3
+import base64 # For inputting image into LLM
+from io import BytesIO # For inputting image into LLM
+import anthropic # For querying LLM
+import tkinter as tk # For GUI
+import platform # For detecting OS
+import pyttsx3 # For text to speech
+import random
 
 client = anthropic.Anthropic(
-    api_key=""
+    api_key="" # Personal API key may be used for testing purposes
 )
 
 screen_width, screen_height = pyautogui.size()
 
+# Initialize GUI
 root = tk.Tk()
 root.title("Accessibility Assistant")
 root.attributes('-alpha', 0.9)
 
+# Heading label
 heading_label = tk.Label(root, text="What would you like to do today?")
 heading_label.pack(pady=5)
 
+# Prompt textbox
 prompt_entry = tk.Entry(root, width=75)
 prompt_entry.pack(padx=5, pady=2)
 prompt_entry.focus_set()
 
-def query_agent():
+def query_agent(event=None):
+    # Queries LLM agent to complete user request
     user_prompt = prompt_entry.get()
+
+    # Focuses away from GUI
     if platform.system() == "Darwin":
         keyboard.press_and_release('cmd+tab')
     else:
         keyboard.press_and_release('alt+tab')
+
+    # GUI disappears
     root.withdraw()
 
     time.sleep(0.25)
 
     def capture_screen(monitor_number=1, grid_spacing=50):
-        with mss.mss() as sct: # Screen capture tool
+        # Captures user's screen and overlays grid for LLM reference
+        with mss.mss() as sct: # SCT = Screen capture tool
             monitor = sct.monitors[monitor_number]
             sct_img = sct.grab(monitor)
 
+            # Set up grid overlay
             img = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
             draw = ImageDraw.Draw(img)
             font = ImageFont.load_default()
 
             width, height = img.size
 
+            # Create grid overlay
             for x in range(0, width, grid_spacing):
                 draw.line([(x, 0), (x, height)], fill="gray", width=1)
                 draw.text((x + 2, 5), str(x), fill="gray", font=font)
@@ -63,11 +77,12 @@ def query_agent():
                 draw.line([(0, y), (width, y)], fill="gray", width=1)
                 draw.text((5, y + 2), str(y), fill="gray", font=font)
 
-            img.save("screenshot_with_grid.png")
-            # img.show()
+            # img.save("screenshot_with_grid.png") # For testing
+            # img.show() # For testing
             return img
 
     def img_to_base64(img, format="PNG"):
+        # Reformats image for LLM
         buffered = BytesIO()
         img.save(buffered, format=format)
         img_bytes = buffered.getvalue()
@@ -78,10 +93,12 @@ def query_agent():
     command_cycles = 0
     past_messages = []
 
-    while command_cycles < 50:
+    while command_cycles < 20:
+        # Accomplishes tasks as given by LLM commands with less than 20 cycles of LLM IO
         print("Starting command cycle", command_cycles+1)
         screen_image_data = img_to_base64(capture_screen(monitor_number=1, grid_spacing=25))
 
+        # Requests commands from LLM
         llm_message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
@@ -107,21 +124,25 @@ def query_agent():
             ],
         )
 
-        # if not llm_message or not llm_message.content or len(llm_message.content) == 0: continue
-        print(llm_message.content[0].text)
+        # print(llm_message.content[0].text) # For testing/debugging
+
+        # Saves actions to give LLM memory between command cycles
         past_messages.append({"role": "assistant", "content": [{"type": "text", "text": llm_message.content[0].text}]})
         past_messages.append({"role": "user", "content": [{"type": "text", "text": "Continue the task provided given your previous progress."}]})
+        
+        # Parses commands
         commands = llm_message.content[0].text.split(";;")[:-1]
         commands = [command.strip() for command in commands]
         commands[0] = commands[0][commands[0].index("!!"):]
 
+        # Executes all commands
         review = False
         for command in commands:
             time.sleep(0.1)
             if command.startswith("!!CLICK"):
                 coords = command[(command.index('(') + 1):command.index(')')].split(',')
                 coords = [int(coord) for coord in coords]
-                pyautogui.click(coords[0]+50, coords[1]+50)
+                pyautogui.click(coords[0]+random.randint(-20, 50), coords[1]+random.randint(-20, 50))
             elif command.startswith("!!WRITE"):
                 text = command[(command.index('(`') + 2):command.index('`)')]
                 keyboard.write(text)
@@ -150,8 +171,11 @@ def query_agent():
         if not review:
             break
 
+    # GUI reappears
     root.deiconify()
 
+# Enter button
+prompt_entry.bind('<Return>', query_agent) 
 enter_button = tk.Button(root, text="Enter", command=query_agent)
 enter_button.pack(pady=3)
 
