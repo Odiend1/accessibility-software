@@ -3,10 +3,12 @@ main.py (Python)
 https://github.com/Odiend1/accessibility-software/
 The Accessibility Assistant software allows blind people to give our AI assistant a prompt and have the AI act directly on the user's computer. The person who is blind could type onto the auto-focused textbox using touch typing, their device's built-in dictation (speech-to-text), or a braille keyboard, among other solutions. The software can use TTS to communicate directly with the user, so it is recommended, but not required, to raise your volume. Closing the application will halt AI action.
 Notes:
-Please run 'pip install pyautogui keyboard mss Pillow pyttsx3 anthropic' in your terminal before using the software to ensure function.
+Please run 'pip install customtkinter pyautogui keyboard mss Pillow pyttsx3 anthropic' in your terminal before using the software to ensure function.
 If needed, please give the program any requested permissions (including screen recording, accessibility, etc.). It is necessary for software function.
 '''
 
+import customtkinter as ctk
+import tkmacosx
 import pyautogui # Mouse control library
 import keyboard # Keyboard control library
 import mss # Screenshot library
@@ -28,16 +30,44 @@ client = anthropic.Anthropic(
 screen_width, screen_height = pyautogui.size()
 
 # Initialize GUI
-root = tk.Tk()
-root.title("Accessibility Assistant")
-root.attributes('-alpha', 0.9)
+root = ctk.CTk()
+root.title("")
+# Window decorations for different OS
+window_corner_radius = 0
+if platform.system() == "Windows":
+    root.overrideredirect(True) 
+    root.wm_attributes('-transparentcolor', 'black')
+    window_corner_radius = 30
+elif platform.system() == "Darwin":
+    root.resizable(False, False)
+root.attributes('-alpha', 0.9) # Makes window translucent
+
+# Content frame
+content_frame = ctk.CTkFrame(root, corner_radius=window_corner_radius)
+content_frame.pack(fill='both', expand=True, padx=2, pady=2)
+
+# Heading button frame
+heading_button_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+heading_button_frame.pack(side='top', anchor='ne', padx=2, pady=2)
+
+# Settings button
+settings_button = ctk.CTkButton(heading_button_frame, text="⚙", command=root.destroy, fg_color="transparent", text_color="black", width=20)
+settings_button.pack(side='left', anchor='ne', padx=5, pady=2)
+
+# Help button
+help_button = ctk.CTkButton(heading_button_frame, text="?", command=root.destroy, fg_color="transparent", text_color="black", width=20)
+help_button.pack(side='left', anchor='ne', padx=5, pady=2)
+
+# Close button
+close_button = ctk.CTkButton(heading_button_frame, text="✕", command=root.destroy, fg_color="transparent", text_color="black", width=20)
+close_button.pack(side='left', anchor='ne', padx=5, pady=2)
 
 # Heading label
-heading_label = tk.Label(root, text="What would you like to do today?")
+heading_label = ctk.CTkLabel(content_frame, text="What would you like to do today?")
 heading_label.pack(pady=5)
 
 # Prompt textbox
-prompt_entry = tk.Entry(root, width=75)
+prompt_entry = ctk.CTkEntry(content_frame, width=75*8)
 prompt_entry.pack(padx=5, pady=2)
 prompt_entry.focus_set()
 
@@ -179,5 +209,18 @@ def query_agent(event=None):
 prompt_entry.bind('<Return>', query_agent) 
 enter_button = tk.Button(root, text="Enter", command=query_agent)
 enter_button.pack(pady=3)
+
+# Makes window draggable
+def initialize_drag(event):
+    root._drag_x = event.x
+    root._drag_y = event.y
+
+def execute_drag(event):
+    x = root.winfo_x() + event.x - root._drag_x
+    y = root.winfo_y() + event.y - root._drag_y
+    root.geometry(f"+{x}+{y}")
+
+root.bind("<ButtonPress-1>", initialize_drag)
+root.bind("<B1-Motion>", execute_drag)
 
 root.mainloop()
